@@ -1,0 +1,265 @@
+Organizations:
+  - &StockMarketMSP
+    Name: StockMarketMSP
+    ID: StockMarketMSP
+    MSPDir: organizations/stockmarket/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('StockMarketMSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('StockMarketMSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('StockMarketMSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('StockMarketMSP.peer','StockMarketMSP.member')"
+    AnchorPeers:
+      - Host: peer0.stockmarket
+        Port: 7051
+
+  - &MaroclearMSP
+    Name: MaroclearMSP
+    ID: MaroclearMSP
+    MSPDir: organizations/maroclear/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('MaroclearMSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('MaroclearMSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('MaroclearMSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('MaroclearMSP.peer','MaroclearMSP.member')"
+    AnchorPeers:
+      - Host: peer0.maroclear
+        Port: 7051
+
+  - &Broker1MSP
+    Name: Broker1MSP
+    ID: Broker1MSP
+    MSPDir: organizations/broker1/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('Broker1MSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('Broker1MSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('Broker1MSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('Broker1MSP.peer','Broker1MSP.member')"
+    AnchorPeers:
+      - Host: peer0.broker1
+        Port: 7051
+
+  - &Broker2MSP
+    Name: Broker2MSP
+    ID: Broker2MSP
+    MSPDir: organizations/broker2/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('Broker2MSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('Broker2MSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('Broker2MSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('Broker2MSP.peer','Broker2MSP.member')"
+    AnchorPeers:
+      - Host: peer0.broker2
+        Port: 7051
+
+  - &AMMCMSP
+    Name: AMMCMSP
+    ID: AMMCMSP
+    MSPDir: organizations/ammc/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('AMMCMSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('AMMCMSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('AMMCMSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('AMMCMSP.peer','AMMCMSP.member')"
+    AnchorPeers:
+      - Host: peer0.ammc
+        Port: 7051
+
+  - &OrdererMSP
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: organizations/orderer/msp
+    Policies:
+      Readers:
+          Type: Signature
+          Rule: "OR('OrdererMSP.member')"
+      Writers:
+          Type: Signature
+          Rule: "OR('OrdererMSP.member')"
+      Admins:
+          Type: Signature
+          Rule: "OR('OrdererMSP.admin')"
+      Endorsement:
+          Type: Signature
+          Rule: "OR('OrdererMSP.member')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "ANY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "ANY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "ANY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer0.orderer:7050
+    - orderer1.orderer:7050
+    - orderer2.orderer:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  EtcdRaft:
+    Consenters:
+      - Host: orderer0.orderer
+        Port: 7050
+        ClientTLSCert: organizations/orderer/orderers/orderer0.orderer/tls/server.crt
+        ServerTLSCert: organizations/orderer/orderers/orderer0.orderer/tls/server.crt
+      - Host: orderer1.orderer
+        Port: 7050
+        ClientTLSCert: organizations/orderer/orderers/orderer1.orderer/tls/server.crt
+        ServerTLSCert: organizations/orderer/orderers/orderer1.orderer/tls/server.crt
+      - Host: orderer2.orderer
+        Port: 7050
+        ClientTLSCert: organizations/orderer/orderers/orderer2.orderer/tls/server.crt
+        ServerTLSCert: organizations/orderer/orderers/orderer2.orderer/tls/server.crt
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  OrdererGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererMSP
+    Consortiums:
+      StockMarketConsortium:
+        Organizations:
+          - *StockMarketMSP
+          - *MaroclearMSP
+          - *Broker1MSP
+          - *Broker2MSP
+          - *AMMCMSP
+
+  # Trading Channel - For orders and execution (CSE, Brokers, AMMC)
+  TradingChannel:
+    Consortium: StockMarketConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *StockMarketMSP
+        - *Broker1MSP
+        - *Broker2MSP
+        - *AMMCMSP
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  # Settlement Channel - For settlement instructions and execution (Maroclear, Brokers, AMMC)
+  SettlementChannel:
+    Consortium: StockMarketConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *MaroclearMSP
+        - *StockMarketMSP
+        - *Broker1MSP
+        - *Broker2MSP
+        - *AMMCMSP
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  # Regulatory Channel - For compliance oversight (AMMC and StockMarket) 
+  RegulatoryChannel:
+    Consortium: StockMarketConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *StockMarketMSP
+        - *AMMCMSP
+      Capabilities:
+        <<: *ApplicationCapabilities

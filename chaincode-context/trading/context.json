@@ -1,0 +1,13 @@
+{
+  "channel": "trading-channel",
+  "chaincode": "order-matching",
+  "primary_orgs": ["StockMarketMSP", "Broker1MSP", "Broker2MSP"],
+  "endorsement_policy": "OR('StockMarketMSP.peer','Broker1MSP.peer','Broker2MSP.peer')",
+  "functions": [
+    "createOrder",
+    "cancelOrder",
+    "matchOrders",
+    "getOrder",
+    "getMatchedTrade"
+  ]
+}

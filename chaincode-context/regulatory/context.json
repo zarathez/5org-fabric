@@ -1,0 +1,14 @@
+{
+  "channel": "regulatory-channel",
+  "chaincode": "compliance",
+  "primary_orgs": ["StockMarketMSP", "AMMCMSP"],
+  "endorsement_policy": "AND('StockMarketMSP.peer','AMMCMSP.peer')",
+  "functions": [
+    "addStock",
+    "updateStockStatus",
+    "performTradeCheck",
+    "manualOverrideComplianceCheck",
+    "addClient",
+    "updateClientStatus"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "channel": "settlement-channel",
+  "chaincode": "settlement",
+  "primary_orgs": ["MaroclearMSP", "StockMarketMSP", "Broker1MSP", "Broker2MSP"],
+  "endorsement_policy": "AND('MaroclearMSP.peer',OR('StockMarketMSP.peer','Broker1MSP.peer','Broker2MSP.peer'))",
+  "functions": [
+    "createBrokerAccount",
+    "createClientAccount",
+    "createSettlementInstruction",
+    "settleTrade",
+    "depositFunds",
+    "withdrawFunds"
+  ]
+}
