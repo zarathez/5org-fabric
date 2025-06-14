@@ -56,12 +56,6 @@ function registerEnrollOrg() {
         fabric-ca-client register --caname ca-$ORG --id.name ${ORG}settle --id.secret ${ORG}settlepw --id.type client --id.attrs "role=settlement-manager:ecert" --tls.certfiles ${PWD}/organizations/$ORG/ca/tls-cert.pem
     fi
 
-    # If this is the AMMC, register a compliance officer
-    if [ "$ORG_TYPE" == "regulator" ]; then
-        echo "Registering compliance officer for regulator $ORG..."
-        fabric-ca-client register --caname ca-$ORG --id.name ${ORG}compliance --id.secret ${ORG}compliancepw --id.type client --id.attrs "role=compliance-officer:ecert" --tls.certfiles ${PWD}/organizations/$ORG/ca/tls-cert.pem
-    fi
-
     # Enroll the org admin
     echo "Enrolling admin identity for $ORG..."
     fabric-ca-client enroll -u https://${ORG}admin:${ORG}adminpw@localhost:$CA_PORT --caname ca-$ORG -M ${PWD}/organizations/$ORG/users/Admin@$ORG/msp --tls.certfiles ${PWD}/organizations/$ORG/ca/tls-cert.pem
@@ -91,12 +85,6 @@ function registerEnrollOrg() {
         echo "Enrolling settlement manager identity for $ORG..."
         mkdir -p ${PWD}/organizations/$ORG/users/Settle@$ORG
         fabric-ca-client enroll -u https://${ORG}settle:${ORG}settlepw@localhost:$CA_PORT --caname ca-$ORG -M ${PWD}/organizations/$ORG/users/Settle@$ORG/msp --tls.certfiles ${PWD}/organizations/$ORG/ca/tls-cert.pem
-    fi
-
-    if [ "$ORG_TYPE" == "regulator" ]; then
-        echo "Enrolling compliance officer identity for regulator $ORG..."
-        mkdir -p ${PWD}/organizations/$ORG/users/Compliance@$ORG
-        fabric-ca-client enroll -u https://${ORG}compliance:${ORG}compliancepw@localhost:$CA_PORT --caname ca-$ORG -M ${PWD}/organizations/$ORG/users/Compliance@$ORG/msp --tls.certfiles ${PWD}/organizations/$ORG/ca/tls-cert.pem
     fi
 
     # Create MSP config.yaml
@@ -132,10 +120,6 @@ EOF
 
     if [ -d "${PWD}/organizations/$ORG/users/Settle@$ORG/msp" ]; then
         cp ${PWD}/organizations/$ORG/peers/peer0.$ORG/msp/config.yaml ${PWD}/organizations/$ORG/users/Settle@$ORG/msp/config.yaml
-    fi
-
-    if [ -d "${PWD}/organizations/$ORG/users/Compliance@$ORG/msp" ]; then
-        cp ${PWD}/organizations/$ORG/peers/peer0.$ORG/msp/config.yaml ${PWD}/organizations/$ORG/users/Compliance@$ORG/msp/config.yaml
     fi
 
     # Copy TLS CA cert files to appropriate location
@@ -305,9 +289,6 @@ registerEnrollOrg "broker1" "Broker1MSP" "9054" "broker"
 echo "================ Broker2 ================"
 registerEnrollOrg "broker2" "Broker2MSP" "10054" "broker"
 
-echo "================ AMMC (Regulator) ================"
-registerEnrollOrg "ammc" "AMMCMSP" "11054" "regulator"
-
 echo "================ Orderer Organization ================"
 registerEnrollOrderer
 
@@ -315,7 +296,7 @@ echo "All organizations have been registered and enrolled successfully!"
 
 # Set proper permissions for MSP directories to ensure they're accessible
 echo "Setting appropriate permissions on MSP directories..."
-for ORG in stockmarket maroclear broker1 broker2 ammc orderer; do
+for ORG in stockmarket maroclear broker1 broker2 orderer; do
   chmod -R 755 ${PWD}/organizations/${ORG}/users/Admin@${ORG}/msp
   echo "Set permissions for ${ORG} admin MSP"
   
@@ -334,18 +315,12 @@ for ORG in stockmarket maroclear broker1 broker2 ammc orderer; do
     chmod -R 755 ${PWD}/organizations/${ORG}/users/Settle@${ORG}/msp
     echo "Set permissions for ${ORG} settlement manager MSP"
   fi
-  
-  if [ -d "${PWD}/organizations/${ORG}/users/Compliance@${ORG}/msp" ]; then
-    chmod -R 755 ${PWD}/organizations/${ORG}/users/Compliance@${ORG}/msp
-    echo "Set permissions for ${ORG} compliance officer MSP"
-  fi
 done
 
 # Create channel and chaincode directories with enhanced context for specific org types
 echo "Creating channel-specific structure..."
 mkdir -p ${PWD}/chaincode-context/trading
 mkdir -p ${PWD}/chaincode-context/settlement
-mkdir -p ${PWD}/chaincode-context/regulatory
 
 # Create organization-context files to help with deployment
 cat > ${PWD}/chaincode-context/trading/context.json << EOF
@@ -377,23 +352,6 @@ cat > ${PWD}/chaincode-context/settlement/context.json << EOF
     "settleTrade",
     "depositFunds",
     "withdrawFunds"
-  ]
-}
-EOF
-
-cat > ${PWD}/chaincode-context/regulatory/context.json << EOF
-{
-  "channel": "regulatory-channel",
-  "chaincode": "compliance",
-  "primary_orgs": ["StockMarketMSP", "AMMCMSP"],
-  "endorsement_policy": "AND('StockMarketMSP.peer','AMMCMSP.peer')",
-  "functions": [
-    "addStock",
-    "updateStockStatus",
-    "performTradeCheck",
-    "manualOverrideComplianceCheck",
-    "addClient",
-    "updateClientStatus"
   ]
 }
 EOF

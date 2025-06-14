@@ -83,27 +83,6 @@ Organizations:
       - Host: peer0.broker2
         Port: 7051
 
-  - &AMMCMSP
-    Name: AMMCMSP
-    ID: AMMCMSP
-    MSPDir: organizations/ammc/msp
-    Policies:
-      Readers:
-          Type: Signature
-          Rule: "OR('AMMCMSP.member')"
-      Writers:
-          Type: Signature
-          Rule: "OR('AMMCMSP.member')"
-      Admins:
-          Type: Signature
-          Rule: "OR('AMMCMSP.admin')"
-      Endorsement:
-          Type: Signature
-          Rule: "OR('AMMCMSP.peer','AMMCMSP.member')"
-    AnchorPeers:
-      - Host: peer0.ammc
-        Port: 7051
-
   - &OrdererMSP
     Name: OrdererMSP
     ID: OrdererMSP
@@ -221,9 +200,8 @@ Profiles:
           - *MaroclearMSP
           - *Broker1MSP
           - *Broker2MSP
-          - *AMMCMSP
 
-  # Trading Channel - For orders and execution (CSE, Brokers, AMMC)
+  # Trading Channel - For orders and execution (CSE, Brokers)
   TradingChannel:
     Consortium: StockMarketConsortium
     <<: *ChannelDefaults
@@ -233,11 +211,10 @@ Profiles:
         - *StockMarketMSP
         - *Broker1MSP
         - *Broker2MSP
-        - *AMMCMSP
       Capabilities:
         <<: *ApplicationCapabilities
 
-  # Settlement Channel - For settlement instructions and execution (Maroclear, Brokers, AMMC)
+  # Settlement Channel - For settlement instructions and execution (Maroclear, Brokers)
   SettlementChannel:
     Consortium: StockMarketConsortium
     <<: *ChannelDefaults
@@ -248,18 +225,5 @@ Profiles:
         - *StockMarketMSP
         - *Broker1MSP
         - *Broker2MSP
-        - *AMMCMSP
-      Capabilities:
-        <<: *ApplicationCapabilities
-
-  # Regulatory Channel - For compliance oversight (AMMC and StockMarket) 
-  RegulatoryChannel:
-    Consortium: StockMarketConsortium
-    <<: *ChannelDefaults
-    Application:
-      <<: *ApplicationDefaults
-      Organizations:
-        - *StockMarketMSP
-        - *AMMCMSP
       Capabilities:
         <<: *ApplicationCapabilities

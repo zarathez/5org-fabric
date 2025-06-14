@@ -570,7 +570,6 @@ func (s *SettlementContract) DepositGuarantee(ctx contractapi.TransactionContext
 	return nil
 }
 
-// CreateSettlementInstruction creates a new settlement instruction for a trade
 func (s *SettlementContract) CreateSettlementInstruction(ctx contractapi.TransactionContextInterface, tradeID string) error {
 	// Check if the instruction already exists
 	instructionID := "instruction-" + tradeID
@@ -597,9 +596,9 @@ func (s *SettlementContract) CreateSettlementInstruction(ctx contractapi.Transac
 		return fmt.Errorf("failed to unmarshal trade: %v", err)
 	}
 
-	// Check if trade is approved
-	if trade.Status != "approved" {
-		return fmt.Errorf("only approved trades can be settled, current status: %s", trade.Status)
+	// Check if trade is pending (CHANGED FROM "approved")
+	if trade.Status != "pending" {
+		return fmt.Errorf("only pending trades can be settled, current status: %s", trade.Status)
 	}
 
 	// Calculate total amount
@@ -1459,6 +1458,16 @@ func (s *SettlementContract) ImportTrade(ctx contractapi.TransactionContextInter
 	tradeID, buyOrderID, sellOrderID, buyBrokerID, sellBrokerID, securityID string,
 	quantity int, price float64, status, matchTime string) error {
 
+	// Check if trade already exists (prevents duplicate trade creation)
+	existingTradeJSON, err := ctx.GetStub().GetState(tradeID)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if existingTradeJSON != nil {
+		return fmt.Errorf("trade %s already exists", tradeID)
+	}
+
+	// Create trade object using only the input parameters (deterministic)
 	trade := Trade{
 		TradeID:      tradeID,
 		BuyOrderID:   buyOrderID,
@@ -1472,6 +1481,7 @@ func (s *SettlementContract) ImportTrade(ctx contractapi.TransactionContextInter
 		MatchTime:    matchTime,
 	}
 
+	// Marshal and store the trade
 	tradeJSON, err := json.Marshal(trade)
 	if err != nil {
 		return fmt.Errorf("failed to marshal trade: %v", err)

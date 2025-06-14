@@ -5,14 +5,12 @@ set -e
 
 # Variables
 TRADING_CHANNEL="trading-channel"
-REGULATORY_CHANNEL="regulatory-channel"
 SETTLEMENT_CHANNEL="settlement-channel"
 ORDERER_ADDR="orderer0.orderer:7050"
 ORDERER_CA="/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/orderer/orderers/orderer0.orderer/tls/ca.crt"
 
 # Define the endorsement policies with single quotes to avoid shell interpretation issues
 POLICY_TRADING='OR("StockMarketMSP.peer","Broker1MSP.peer","Broker2MSP.peer")'
-POLICY_REGULATORY='AND("StockMarketMSP.peer","AMMCMSP.peer")'
 POLICY_SETTLEMENT='AND("MaroclearMSP.peer",OR("StockMarketMSP.peer","Broker1MSP.peer","Broker2MSP.peer"))'
 
 # Create packages directory if it doesn't exist
@@ -21,7 +19,7 @@ mkdir -p ./packages
 echo "Setting up go modules for chaincodes..."
 
 # Setup proper Go modules for each chaincode
-for CC_DIR in order-matching compliance settlement; do
+for CC_DIR in order-matching settlement; do
   echo "Preparing $CC_DIR chaincode..."
   
   # Create proper go.mod file with Go 1.17
@@ -74,12 +72,6 @@ if [ ! -f "./packages/order-matching.tar.gz" ]; then
   peer lifecycle chaincode package ./packages/order-matching.tar.gz --path ./chaincodes/order-matching --lang golang --label order-matching_1
 fi
 
-# Package compliance chaincode (Regulatory channel)
-if [ ! -f "./packages/compliance.tar.gz" ]; then
-  echo "Creating compliance package..."
-  peer lifecycle chaincode package ./packages/compliance.tar.gz --path ./chaincodes/compliance --lang golang --label compliance_1
-fi
-
 # Package settlement chaincode (Settlement channel)
 if [ ! -f "./packages/settlement.tar.gz" ]; then
   echo "Creating settlement package..."
@@ -91,7 +83,6 @@ echo "✅ Chaincodes packaged"
 # Copy packages to CLI container
 echo "Copying packages to CLI container..."
 docker cp ./packages/order-matching.tar.gz cli:/opt/gopath/src/github.com/hyperledger/fabric/peer/
-docker cp ./packages/compliance.tar.gz cli:/opt/gopath/src/github.com/hyperledger/fabric/peer/
 docker cp ./packages/settlement.tar.gz cli:/opt/gopath/src/github.com/hyperledger/fabric/peer/
 
 ############################################################
@@ -132,17 +123,6 @@ PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'order-matching_1' 
 echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_broker2.txt"
 PACKAGE_ID_BROKER2=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_broker2.txt)
 
-# Install on AMMC peer (for monitoring)
-echo "Installing on AMMC peer..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/order-matching.tar.gz && \
-PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'order-matching_1' | awk '{print \$3}' | sed 's/,//') && \
-echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_trading.txt"
-PACKAGE_ID_AMMC_TRADING=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_trading.txt)
-
 echo "✅ Order-matching chaincode installed on peers for Trading channel"
 
 echo "Approving order-matching chaincode for all organizations..."
@@ -171,14 +151,6 @@ export CORE_PEER_LOCALMSPID=Broker2MSP && \
 export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt && \
 peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $TRADING_CHANNEL --name order-matching --version 1.0 --package-id $PACKAGE_ID_BROKER2 --sequence 1 --signature-policy '$POLICY_TRADING' --tls --cafile $ORDERER_CA"
 
-# Approve chaincode for AMMC
-echo "Approving for AMMC..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $TRADING_CHANNEL --name order-matching --version 1.0 --package-id $PACKAGE_ID_AMMC_TRADING --sequence 1 --signature-policy '$POLICY_TRADING' --tls --cafile $ORDERER_CA"
-
 echo "✅ Order-matching chaincode approved by all organizations"
 
 # Check commit readiness
@@ -198,8 +170,7 @@ export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric
 peer lifecycle chaincode commit -o $ORDERER_ADDR --channelID $TRADING_CHANNEL --name order-matching --version 1.0 --sequence 1 --signature-policy '$POLICY_TRADING' --tls --cafile $ORDERER_CA \
     --peerAddresses peer0.stockmarket:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt \
     --peerAddresses peer0.broker1:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker1/peers/peer0.broker1/tls/ca.crt \
-    --peerAddresses peer0.broker2:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt \
-    --peerAddresses peer0.ammc:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt"
+    --peerAddresses peer0.broker2:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt"
 
 echo "✅ Order-matching chaincode committed on Trading channel"
 
@@ -209,82 +180,6 @@ export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
 export CORE_PEER_LOCALMSPID=StockMarketMSP && \
 export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
 peer lifecycle chaincode querycommitted --channelID $TRADING_CHANNEL --name order-matching --cafile $ORDERER_CA"
-
-############################################################
-# INSTALL AND APPROVE COMPLIANCE CHAINCODE ON REGULATORY CHANNEL
-############################################################
-echo "Installing compliance chaincode for the Regulatory channel..."
-
-# Install on StockMarket peer
-echo "Installing on StockMarket peer..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/users/Admin@stockmarket/msp && \
-export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
-export CORE_PEER_LOCALMSPID=StockMarketMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
-peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/compliance.tar.gz && \
-PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'compliance_1' | awk '{print \$3}' | sed 's/,//') && \
-echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_stockmarket_comp.txt"
-PACKAGE_ID_STOCKMARKET_COMP=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_stockmarket_comp.txt)
-
-# Install on AMMC peer
-echo "Installing on AMMC peer..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/compliance.tar.gz && \
-PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'compliance_1' | awk '{print \$3}' | sed 's/,//') && \
-echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_comp.txt"
-PACKAGE_ID_AMMC_COMP=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_comp.txt)
-
-echo "✅ Compliance chaincode installed on StockMarket and AMMC peers"
-
-echo "Approving compliance chaincode for organizations..."
-
-# Approve chaincode for StockMarket
-echo "Approving for StockMarket..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/users/Admin@stockmarket/msp && \
-export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
-export CORE_PEER_LOCALMSPID=StockMarketMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
-peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $REGULATORY_CHANNEL --name compliance --version 1.0 --package-id $PACKAGE_ID_STOCKMARKET_COMP --sequence 1 --signature-policy '$POLICY_REGULATORY' --tls --cafile $ORDERER_CA"
-
-# Approve chaincode for AMMC
-echo "Approving for AMMC..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $REGULATORY_CHANNEL --name compliance --version 1.0 --package-id $PACKAGE_ID_AMMC_COMP --sequence 1 --signature-policy '$POLICY_REGULATORY' --tls --cafile $ORDERER_CA"
-
-echo "✅ Compliance chaincode approved by StockMarket and AMMC"
-
-# Check commit readiness
-echo "Checking commit readiness for compliance chaincode..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/users/Admin@stockmarket/msp && \
-export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
-export CORE_PEER_LOCALMSPID=StockMarketMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
-peer lifecycle chaincode checkcommitreadiness --channelID $REGULATORY_CHANNEL --name compliance --version 1.0 --sequence 1 --signature-policy '$POLICY_REGULATORY' --tls --cafile $ORDERER_CA --output json"
-
-# Commit the chaincode definition
-echo "Committing compliance chaincode on Regulatory channel..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/users/Admin@stockmarket/msp && \
-export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
-export CORE_PEER_LOCALMSPID=StockMarketMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
-peer lifecycle chaincode commit -o $ORDERER_ADDR --channelID $REGULATORY_CHANNEL --name compliance --version 1.0 --sequence 1 --signature-policy '$POLICY_REGULATORY' --tls --cafile $ORDERER_CA \
-    --peerAddresses peer0.stockmarket:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt \
-    --peerAddresses peer0.ammc:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt"
-
-echo "✅ Compliance chaincode committed on Regulatory channel"
-
-# Query committed to confirm
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/users/Admin@stockmarket/msp && \
-export CORE_PEER_ADDRESS=peer0.stockmarket:7051 && \
-export CORE_PEER_LOCALMSPID=StockMarketMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt && \
-peer lifecycle chaincode querycommitted --channelID $REGULATORY_CHANNEL --name compliance --cafile $ORDERER_CA"
 
 ############################################################
 # INSTALL AND APPROVE SETTLEMENT CHAINCODE ON SETTLEMENT CHANNEL
@@ -335,17 +230,6 @@ PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'settlement_1' | aw
 echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_broker2_settle.txt"
 PACKAGE_ID_BROKER2_SETTLE=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_broker2_settle.txt)
 
-# Install on AMMC peer
-echo "Installing on AMMC peer for settlement channel..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode install /opt/gopath/src/github.com/hyperledger/fabric/peer/settlement.tar.gz && \
-PACKAGE_ID=\$(peer lifecycle chaincode queryinstalled | grep 'settlement_1' | awk '{print \$3}' | sed 's/,//') && \
-echo \$PACKAGE_ID > /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_settle.txt"
-PACKAGE_ID_AMMC_SETTLE=$(docker exec cli cat /opt/gopath/src/github.com/hyperledger/fabric/peer/package_id_ammc_settle.txt)
-
 echo "✅ Settlement chaincode installed on peers for settlement channel"
 
 echo "Approving settlement chaincode for organizations..."
@@ -382,14 +266,6 @@ export CORE_PEER_LOCALMSPID=Broker2MSP && \
 export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt && \
 peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $SETTLEMENT_CHANNEL --name settlement --version 1.0 --package-id $PACKAGE_ID_BROKER2_SETTLE --sequence 1 --signature-policy '$POLICY_SETTLEMENT' --tls --cafile $ORDERER_CA"
 
-# Approve chaincode for AMMC
-echo "Approving for AMMC on settlement channel..."
-docker exec cli bash -c "export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/users/Admin@ammc/msp && \
-export CORE_PEER_ADDRESS=peer0.ammc:7051 && \
-export CORE_PEER_LOCALMSPID=AMMCMSP && \
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt && \
-peer lifecycle chaincode approveformyorg -o $ORDERER_ADDR --channelID $SETTLEMENT_CHANNEL --name settlement --version 1.0 --package-id $PACKAGE_ID_AMMC_SETTLE --sequence 1 --signature-policy '$POLICY_SETTLEMENT' --tls --cafile $ORDERER_CA"
-
 echo "✅ Settlement chaincode approved by all organizations"
 
 # Check commit readiness
@@ -410,8 +286,7 @@ peer lifecycle chaincode commit -o $ORDERER_ADDR --channelID $SETTLEMENT_CHANNEL
    --peerAddresses peer0.maroclear:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/maroclear/peers/peer0.maroclear/tls/ca.crt \
    --peerAddresses peer0.stockmarket:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/stockmarket/peers/peer0.stockmarket/tls/ca.crt \
    --peerAddresses peer0.broker1:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker1/peers/peer0.broker1/tls/ca.crt \
-   --peerAddresses peer0.broker2:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt \
-   --peerAddresses peer0.ammc:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ammc/peers/peer0.ammc/tls/ca.crt"
+   --peerAddresses peer0.broker2:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/broker2/peers/peer0.broker2/tls/ca.crt"
 
 echo "✅ Settlement chaincode committed on settlement channel"
 
@@ -423,4 +298,3 @@ export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric
 peer lifecycle chaincode querycommitted --channelID $SETTLEMENT_CHANNEL --name settlement --cafile $ORDERER_CA"
 
 echo "✅ All chaincodes have been successfully installed, approved and committed on their respective channels!"
-
