@@ -14,20 +14,6 @@ type SettlementContract struct {
 	contractapi.Contract
 }
 
-// Trade represents a matched trade between buy and sell orders
-type Trade struct {
-	TradeID      string  `json:"tradeID"`
-	BuyOrderID   string  `json:"buyOrderID"`
-	SellOrderID  string  `json:"sellOrderID"`
-	BuyBrokerID  string  `json:"buyBrokerID"`
-	SellBrokerID string  `json:"sellBrokerID"`
-	SecurityID   string  `json:"securityID"`
-	Quantity     int     `json:"quantity"`
-	Price        float64 `json:"price"`
-	Status       string  `json:"status"` // pending, approved, rejected, settled
-	MatchTime    string  `json:"matchTime"`
-}
-
 // SettlementInstruction represents instructions for settlement
 type SettlementInstruction struct {
 	InstructionID  string  `json:"instructionID"`
@@ -42,6 +28,20 @@ type SettlementInstruction struct {
 	CreatedAt      string  `json:"createdAt"`
 	SettlementDate string  `json:"settlementDate"`
 	CompletedAt    string  `json:"completedAt"`
+}
+
+// Trade represents a matched trade between buy and sell orders
+type Trade struct {
+	TradeID      string  `json:"tradeID"`
+	BuyOrderID   string  `json:"buyOrderID"`
+	SellOrderID  string  `json:"sellOrderID"`
+	BuyBrokerID  string  `json:"buyBrokerID"`
+	SellBrokerID string  `json:"sellBrokerID"`
+	SecurityID   string  `json:"securityID"`
+	Quantity     int     `json:"quantity"`
+	Price        float64 `json:"price"`
+	Status       string  `json:"status"` // pending, approved, rejected, settled
+	MatchTime    string  `json:"matchTime"`
 }
 
 // BrokerAccount represents a broker's cash account
