@@ -13,8 +13,7 @@ services:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-      - ORDERER_GENERAL_GENESISMETHOD=file
-      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis file configuration - using channel participation API instead
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       # Cluster and Raft configuration
@@ -26,10 +25,12 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      # Enable channel participation API (default in modern Fabric)
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
-      - ./system-genesis-block/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis block volume mount
       - ./organizations/orderer/orderers/orderer0.orderer/msp:/var/hyperledger/orderer/msp
       - ./organizations/orderer/orderers/orderer0.orderer/tls:/var/hyperledger/orderer/tls
     ports:
@@ -44,8 +45,7 @@ services:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-      - ORDERER_GENERAL_GENESISMETHOD=file
-      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis file configuration - using channel participation API instead
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       # Cluster and Raft configuration
@@ -57,10 +57,12 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      # Enable channel participation API (default in modern Fabric)
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
-      - ./system-genesis-block/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis block volume mount
       - ./organizations/orderer/orderers/orderer1.orderer/msp:/var/hyperledger/orderer/msp
       - ./organizations/orderer/orderers/orderer1.orderer/tls:/var/hyperledger/orderer/tls
     ports:
@@ -75,8 +77,7 @@ services:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-      - ORDERER_GENERAL_GENESISMETHOD=file
-      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis file configuration - using channel participation API instead
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       # Cluster and Raft configuration
@@ -88,10 +89,12 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      # Enable channel participation API (default in modern Fabric)
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
     volumes:
-      - ./system-genesis-block/genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+      # Removed genesis block volume mount
       - ./organizations/orderer/orderers/orderer2.orderer/msp:/var/hyperledger/orderer/msp
       - ./organizations/orderer/orderers/orderer2.orderer/tls:/var/hyperledger/orderer/tls
     ports:
